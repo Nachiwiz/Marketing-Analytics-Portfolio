@@ -1,0 +1,192 @@
+---
+title: "Customer Segmentation Analysis"
+author: "Eder Garcia"
+date: "March 26,2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```{r libraries}
+library(tidyverse)
+library(psych)
+library(corrplot)
+```
+
+## Load Data
+
+```{r load-data}
+data <- read.csv("customer_segmentation.csv")
+
+str(data)
+summary(data)
+head(data)
+```
+
+## Clean Column Names
+
+```{r clean-names}
+names(data) <- gsub(" ", "", names(data))
+names(data)
+```
+
+## Convert Variables
+
+```{r convert-vars}
+data$Gender <- factor(
+  data$Gender,
+  levels = c(1, 2),
+  labels = c("Male", "Female")
+)
+
+data$Education <- factor(
+  data$Education,
+  levels = c(1, 2, 3, 4, 5),
+  labels = c("Primary", "Secondary", "HighSchool", "Bachelor", "Postgrad")
+)
+
+data$Age <- factor(data$Age, ordered = TRUE)
+
+str(data)
+```
+
+## Descriptive Statistics
+
+```{r descriptives}
+items <- c(
+  "CS_helpful", "Recommend", "Come_again",
+  "All_Products", "Profesionalism", "Limitation",
+  "Online_grocery", "delivery", "Pick_up",
+  "Find_items", "other_shops"
+)
+
+descr <- psych::describe(data[, items])
+descr
+```
+
+## Frequency Tables
+
+```{r frequencies}
+table(data$Gender)
+prop.table(table(data$Gender))
+
+table(data$Education)
+prop.table(table(data$Education))
+
+table(data$Age)
+prop.table(table(data$Age))
+```
+
+## Graph 1: Customer Service Helpful
+
+```{r graph-cs-helpful}
+ggplot(data, aes(x = CS_helpful)) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = "Distribution of Customer Service Helpful",
+    x = "Response",
+    y = "Count"
+  )
+```
+
+## Graph 2: Gender Distribution
+
+```{r graph-gender}
+ggplot(data, aes(x = Gender)) +
+  geom_bar(fill = "darkgreen") +
+  labs(
+    title = "Gender Distribution",
+    x = "Gender",
+    y = "Count"
+  )
+```
+
+## Correlation Matrix
+
+```{r correlation}
+cor_mat <- cor(data[, items], use = "pairwise.complete.obs")
+round(cor_mat, 2)
+```
+
+## Correlation Plot
+
+```{r corrplot}
+corrplot(
+  cor_mat,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  addCoef.col = "black",
+  number.cex = 0.6
+)
+```
+
+## Reliability Analysis
+
+```{r reliability}
+scale_items <- c(
+  "CS_helpful", "Recommend", "Come_again",
+  "All_Products", "Profesionalism", "Limitation",
+  "Online_grocery", "delivery", "Pick_up",
+  "Find_items", "other_shops"
+)
+
+alpha_result <- psych::alpha(data[, scale_items])
+alpha_result
+```
+
+## Satisfaction Score
+
+```{r satisfaction-total}
+data$Satisfaction_Total <- rowMeans(data[, scale_items], na.rm = TRUE)
+summary(data$Satisfaction_Total)
+```
+
+## Satisfaction by Gender
+
+```{r satisfaction-gender-table}
+data %>%
+  group_by(Gender) %>%
+  summarise(
+    n = n(),
+    mean_satisfaction = mean(Satisfaction_Total, na.rm = TRUE),
+    sd_satisfaction = sd(Satisfaction_Total, na.rm = TRUE)
+  )
+```
+
+## Satisfaction by Education
+
+```{r satisfaction-education-table}
+data %>%
+  group_by(Education) %>%
+  summarise(
+    n = n(),
+    mean_satisfaction = mean(Satisfaction_Total, na.rm = TRUE),
+    sd_satisfaction = sd(Satisfaction_Total, na.rm = TRUE)
+  )
+```
+
+## Graph 3: Satisfaction by Gender
+
+```{r graph-satisfaction-gender}
+ggplot(data, aes(x = Gender, y = Satisfaction_Total, fill = Gender)) +
+  geom_boxplot() +
+  labs(
+    title = "Satisfaction by Gender",
+    x = "Gender",
+    y = "Satisfaction (mean score)"
+  ) +
+  theme(legend.position = "none")
+```
+
+## Save Processed File
+
+```{r save-file}
+write.csv(data, "customer_segmentation_processed.csv", row.names = FALSE)
+```
